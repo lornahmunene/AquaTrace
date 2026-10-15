@@ -51,11 +51,9 @@ export default function Landing() {
             </span>
             <h2 className="text-lg font-semibold text-slate-900">{t("landing.technician")}</h2>
             <p className="mt-1 text-sm text-slate-500">{t("landing.technicianDesc")}</p>
-            <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-aqua-700">
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-aqua-700">
               {t("shell.role.technician")}
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
-                {t("landing.soon")}
-              </span>
+              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
             </span>
           </Link>
         </div>

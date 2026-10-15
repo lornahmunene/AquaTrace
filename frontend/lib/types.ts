@@ -153,6 +153,19 @@ export interface IssueEvent {
   status: IssueStatus;
   at: string;
   note?: Text;
+  /** Who made the change (display name). */
+  by?: string;
+  /** Technician-only note. The farmer API must strip these. */
+  internal?: boolean;
+}
+
+export type ZoneId = "A" | "B" | "C" | "D";
+export type IssueOrigin = "farmer" | "sensor" | "technician";
+
+export interface IssueReporter {
+  id: string;
+  name: string;
+  plot: string;
 }
 
 export interface Issue {
@@ -167,6 +180,11 @@ export interface Issue {
   updatedAt: string;
   assignedTo?: string;
   timeline: IssueEvent[];
+  /** Supply zone the issue belongs to (used by technicians). */
+  zone?: ZoneId;
+  reporter?: IssueReporter;
+  /** Where the report came from. Defaults to "farmer" when absent. */
+  origin?: IssueOrigin;
 }
 
 export interface NewIssueInput {
@@ -176,3 +194,97 @@ export interface NewIssueInput {
   locationDetail?: string;
   description: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* Technician / network operations                                     */
+/* ------------------------------------------------------------------ */
+
+export interface Technician {
+  id: string;
+  /** Short display name used in assignments, e.g. "J. Mutua". */
+  name: string;
+  fullName: string;
+  zones: ZoneId[];
+  schemeName: string;
+}
+
+export interface ZoneStat {
+  id: ZoneId;
+  name: Text;
+  farms: number;
+  inflowLitres24h: number;
+  consumedLitres24h: number;
+  lossLitres24h: number;
+  lossPct: number;
+  avgPressureBar: number;
+  sensorsOnline: number;
+  sensorsTotal: number;
+  source: ReadingSource;
+}
+
+export interface TankStat {
+  id: string;
+  name: string;
+  levelLitres: number;
+  capacityLitres: number;
+}
+
+export interface NetworkOverview {
+  inflowLitres24h: number;
+  consumedLitres24h: number;
+  lossLitres24h: number;
+  lossPct: number;
+  /** Utility target for non-revenue water, in percent. */
+  targetLossPct: number;
+  tanks: TankStat[];
+  lastUpdated: string;
+  source: ReadingSource;
+}
+
+export interface BalancePoint {
+  date: string;
+  label: string;
+  inflowLitres: number;
+  consumedLitres: number;
+  lossPct: number;
+}
+
+export type DetectionStatus = "new" | "investigating" | "dismissed" | "converted";
+
+export interface LeakDetection {
+  id: string;
+  zone: ZoneId;
+  segment: Text;
+  signal: Text;
+  detectedAt: string;
+  estLossLitresPerDay: number;
+  confidence: number; // 0..1
+  status: DetectionStatus;
+  incidentId?: string;
+  /** "mock-rules" = demo data, never a trained model or real sensor analysis. */
+  generatedBy: "mock-rules" | "ai-model";
+}
+
+export type SensorType = "flow" | "pressure" | "tank_level" | "soil_moisture";
+export type SensorStatus = "online" | "offline" | "low_battery";
+
+export interface Sensor {
+  id: string;
+  type: SensorType;
+  zone: ZoneId;
+  location: Text;
+  status: SensorStatus;
+  lastSeen: string;
+  batteryPct: number | null;
+  value: number | null;
+  unit: string;
+  source: ReadingSource;
+}
+
+export type IncidentAction =
+  | { type: "acknowledge" }
+  | { type: "assign"; to: string }
+  | { type: "start" }
+  | { type: "resolve"; note: string }
+  | { type: "reopen" }
+  | { type: "note"; note: string; shareWithFarmer: boolean };

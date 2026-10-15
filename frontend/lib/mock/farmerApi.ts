@@ -10,7 +10,6 @@ import {
   FARMER,
   buildDailyUsage,
   buildFieldBlocks,
-  buildIssues,
   buildNotifications,
   buildOverview,
   buildRecommendations,
@@ -18,6 +17,7 @@ import {
   buildSupplyTrend,
   lpmForBlock,
 } from "./seed";
+import { drainFarmerInbox, getStore, nextIssueId } from "./store";
 
 const delay = (ms = 200 + Math.random() * 250) => new Promise((r) => setTimeout(r, ms));
 const clone = <T,>(v: T): T => structuredClone(v);
@@ -38,8 +38,6 @@ function init() {
     blocks: buildFieldBlocks(),
     recommendations: buildRecommendations(schedules, overview),
     notifications: buildNotifications(schedules, overview),
-    issues: buildIssues(),
-    nextIssueNumber: 1052,
   };
 }
 
@@ -124,6 +122,8 @@ export const mockFarmerApi: FarmerApi = {
 
   async getNotifications() {
     await delay();
+    // Pick up updates technicians produced while the farmer app was idle.
+    s().notifications.unshift(...drainFarmerInbox());
     return clone(
       [...s().notifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     );
@@ -138,8 +138,12 @@ export const mockFarmerApi: FarmerApi = {
 
   async getIssues() {
     await delay();
+    // The farmer only sees their own reports, without technician-internal notes.
     return clone(
-      [...s().issues].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+      getStore()
+        .issues.filter((i) => i.reporter?.id === FARMER.id)
+        .map((i) => ({ ...i, timeline: i.timeline.filter((e) => !e.internal) }))
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     );
   },
 
@@ -147,18 +151,26 @@ export const mockFarmerApi: FarmerApi = {
     await delay(450);
     const st = s();
     const now = new Date().toISOString();
-    const id = `ISS-${st.nextIssueNumber++}`;
+    const id = nextIssueId();
     const issue: Issue = {
       id,
       ...input,
       status: "reported",
       createdAt: now,
       updatedAt: now,
+      zone: "B",
+      origin: "farmer",
+      reporter: { id: FARMER.id, name: FARMER.name, plot: FARMER.plotName },
       timeline: [
-        { status: "reported", at: now, note: L("Submitted by farmer", "Imetumwa na mkulima") },
+        {
+          status: "reported",
+          at: now,
+          note: L("Submitted by farmer", "Imetumwa na mkulima"),
+          by: FARMER.name,
+        },
       ],
     };
-    st.issues.unshift(issue);
+    getStore().issues.unshift(issue);
     st.notifications.unshift({
       id: `n-${Date.now()}`,
       type: "issue",
@@ -177,7 +189,7 @@ export const mockFarmerApi: FarmerApi = {
 
   async reopenIssue(id) {
     await delay(300);
-    const issue = s().issues.find((i) => i.id === id);
+    const issue = getStore().issues.find((i) => i.id === id && i.reporter?.id === FARMER.id);
     if (!issue) throw new Error("Issue not found");
     const now = new Date().toISOString();
     issue.status = "reported";
@@ -189,7 +201,8 @@ export const mockFarmerApi: FarmerApi = {
         "Reopened by farmer: the problem is still there.",
         "Imefunguliwa tena na mkulima: tatizo bado lipo.",
       ),
+      by: FARMER.name,
     });
-    return clone(issue);
+    return clone({ ...issue, timeline: issue.timeline.filter((e) => !e.internal) });
   },
 };

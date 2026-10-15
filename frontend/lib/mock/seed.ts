@@ -537,7 +537,12 @@ export function buildNotifications(
 
 // ---------- issues ----------
 export function buildIssues(): Issue[] {
-  return [
+  const own = {
+    zone: "B" as const,
+    origin: "farmer" as const,
+    reporter: { id: FARMER.id, name: FARMER.name, plot: FARMER.plotName },
+  };
+  const list: Issue[] = [
     {
       id: "ISS-1051",
       type: "shortage",
@@ -590,4 +595,5 @@ export function buildIssues(): Issue[] {
       ],
     },
   ];
+  return list.map((i) => ({ ...i, ...own }));
 }

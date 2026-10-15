@@ -193,11 +193,13 @@ export function Modal({
   onClose,
   title,
   children,
+  wide,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  wide?: boolean;
 }) {
   const { t } = useI18n();
 
@@ -226,7 +228,10 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="animate-sheet relative flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-white shadow-2xl sm:max-w-lg sm:rounded-3xl"
+        className={cn(
+          "animate-sheet relative flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl",
+          wide ? "sm:max-w-2xl" : "sm:max-w-lg",
+        )}
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
